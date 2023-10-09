@@ -1,4 +1,4 @@
-var data = ee.FeatureCollection("placeholder");
+var data = ee.FeatureCollection("projects/ee-bau-tubitak-ndvi/assets/processed_data");
 
 //Visualization Parameters
 var palette_1 = ["0000FF", "000080", "800080", "AA00FF", "FF00FF", "FF0000", "FF8000", "FFFF80", "808000" ,"005000" ,"00FF00" , "00FFFF" ];
