@@ -23,24 +23,20 @@ def data_conversion(df):
 
 def main():
     current_directory = os.getcwd()
+    current_directory = os.path.join(current_directory, "Gee_Code")
+    
+    data_file_path = os.path.join(current_directory, "data.csv")
+    df = pd.read_csv(data_file_path)
 
-    data_folder = os.path.join(current_directory, "Data")
-    print(data_folder)
-    if os.path.exists(data_folder):
-        data_file_path = os.path.join(data_folder, "data.csv")
+    data_conversion(df)
+    print(df.head())
+    
+    df.pop("system:index")
+    column_to_move = df.pop(".geo")
+    df.insert(len(df.columns), ".geo", column_to_move)
 
-        df = pd.read_csv(data_file_path)
-
-        data_conversion(df)
-        print(df.head())
-
-        df.pop("system:index")
-        column_to_move = df.pop(".geo")
-        df.insert(len(df.columns), ".geo", column_to_move)
-
-        df.to_csv("assets_Data.csv", index=False)
-    else:
-        print("Please Import the data")
+    export_file_path = os.path.join(current_directory, "assets_Data.csv")
+    df.to_csv(export_file_path, index=False)
 
 if __name__ == "__main__":
     main()
