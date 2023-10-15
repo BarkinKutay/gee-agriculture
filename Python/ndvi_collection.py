@@ -1,26 +1,25 @@
 import ee
 import pandas as pd
 import math
-import time
-import credentials
 
-user = credentials.user()
+ee.Initialize(project="ee-bau-tubitak-ndvi")
 
-ee.Initialize(project=user.project_id)
-
-parsel_data = ee.FeatureCollection(user.parcel_data_id)
+#Parameters and initial data for the code
+parsel_data = ee.FeatureCollection("projects/ee-bau-tubitak-ndvi/assets/DestekParselleri")
 image_data = ee.ImageCollection("COPERNICUS/S2")
 year = 2018
 month_range = 12
 count = None
-batch_size = 1000
+batch_size = 980
 
+#Functions that are being used to extract data
 
 def add_ndvi(input_image):
     nd = input_image.normalizedDifference(["B8", "B4"]).rename("ndvi")
     return input_image.addBands(nd)
 
-def get_monthly_ImageCollection(year):
+def get_monthly_ImageCollection(year): 
+
     imageCollection = ee.ImageCollection([])
 
     for month in range(month_range):
@@ -60,6 +59,9 @@ def collect_data(image, database):
     
     return database.map(map_function)
 
+
+#Functions that are being used to process data
+
 def data_conversion(df):
     df["peak_month"] = df["mean_ndvi"].apply(lambda x: x.index(max(x)) + 1)
     df["peak_list"] = df["mean_ndvi"].apply(Peak_List)
@@ -82,16 +84,9 @@ def Peak_List(parsel_ndvi):
 def batch_processing(image_list, database, batch_num):
     data_list = []
 
-    start_time = time.time()
-    print("Fetching Data : ", end="")
-
     for month in range(image_list.size().getInfo()):
         image = ee.Image(image_list.get(month))
         database = collect_data(image, database)
-
-    print(time.time() - start_time)
-    start_time = time.time()
-    print("Converting Data : ", end="")
 
     for feature in database.getInfo()["features"]:
         properties = feature["properties"]
@@ -103,10 +98,7 @@ def batch_processing(image_list, database, batch_num):
 
     column_to_move = df.pop(".geo")
     df.insert(len(df.columns), ".geo", column_to_move)
-
-    print(time.time() - start_time)
     return df
-
 
 
 database = parsel_data.distinct("TarimParse").limit(count).map(featureCollection_init)
@@ -121,10 +113,11 @@ total_batches = math.ceil(database.size().getInfo() / batch_size)
 print(f"Data count: {database.size().getInfo()}; Batch Count: {total_batches}")
 
 for batch_num in range(total_batches):
+    
     start_idx = batch_num * batch_size
     end_idx = min((batch_num + 1) * batch_size, database.size().getInfo())
 
-    print(f"[Batch: {batch_num+1}; Range: {start_idx} - {end_idx}  Size: {(end_idx - start_idx)}]")
+    print(f"[Batch: {batch_num+1}; Range: ({start_idx} - {end_idx}); Size: {(end_idx - start_idx)}] : ", end="")
 
     batch_database = database.toList((end_idx - start_idx), start_idx)
     batch_database = ee.FeatureCollection(batch_database)
@@ -132,4 +125,6 @@ for batch_num in range(total_batches):
     df = batch_processing(image_list, batch_database, batch_num)
     merged_df = pd.concat([merged_df, df])
 
-merged_df.to_csv(f"{year}_data.csv", index=False)
+    print("Done")
+
+merged_df.to_csv("merged_data.csv", index=False)
